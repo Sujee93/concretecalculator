@@ -15,6 +15,10 @@
     "api/pricing-config.ts": {
       "memory": 256,
       "maxDuration": 10
+    },
+    "api/welcome-config.ts": {
+      "memory": 256,
+      "maxDuration": 10
     }
   },
   "rewrites": [

@@ -13,6 +13,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { z } from "zod";
 // Explicit .js extension — see note in submit.ts (ESM under "type":"module").
 import { buildPartialLeadEmail, buildWelcomePackEmail } from "./emails.js";
+import { readWelcomeConfig } from "./welcome-config.js";
 import {
   SENDER_EMAIL,
   INQUIRY_RECIPIENT,
@@ -86,22 +87,21 @@ export default async function handler(
   }
 
   // 2. Welcome-pack email to the customer, with the PDF attached. Fires once
-  //    because the client calls this endpoint at most once per session.
+  //    because the client calls this endpoint at most once per session. Copy
+  //    + PDF come from the admin-editable welcome config (falls back to the
+  //    default copy and the bundled /public PDF).
   try {
-    const welcomePackUrl = resolveWelcomePackUrl(req);
+    const welcome = await readWelcomeConfig();
+    const pdfUrl = welcome.pdfUrl || resolveWelcomePackUrl(req);
+    const pdfFilename = welcome.pdfFilename || "Smooth Concrete Welcome Pack.pdf";
     await sendEmail(apiKey, {
       from: SENDER_EMAIL,
       to: customer.email,
       replyTo: INQUIRY_RECIPIENT, // customer replies go to Luke
-      subject: "Welcome to Smooth Concrete — your welcome pack",
-      html: buildWelcomePackEmail(customer),
-      attachments: welcomePackUrl
-        ? [
-            {
-              filename: "Smooth Concrete Welcome Pack.pdf",
-              path: welcomePackUrl,
-            },
-          ]
+      subject: welcome.subject,
+      html: buildWelcomePackEmail(customer, welcome.body),
+      attachments: pdfUrl
+        ? [{ filename: pdfFilename, path: pdfUrl }]
         : undefined,
     });
   } catch (err) {

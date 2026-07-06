@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import { AdminPricing } from "./components/AdminPricing";
+import { AdminPanel } from "./components/AdminPanel";
 import "./styles/globals.css";
 
 // Tiny path-based route: /admin serves Luke's pricing editor, everything else
@@ -10,5 +10,5 @@ const isAdmin =
   window.location.pathname.replace(/\/+$/, "").toLowerCase() === "/admin";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>{isAdmin ? <AdminPricing /> : <App />}</React.StrictMode>,
+  <React.StrictMode>{isAdmin ? <AdminPanel /> : <App />}</React.StrictMode>,
 );

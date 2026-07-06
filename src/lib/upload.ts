@@ -19,6 +19,24 @@ const today = () => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 };
 
+/**
+ * Upload the admin welcome-pack PDF straight to Blob (bypasses the 4.5 MB
+ * function cap). Stored under a stable `config/` prefix, not the dated inquiry
+ * tree. Returns the public URL + filename to persist in the welcome config.
+ */
+export async function uploadWelcomePack(
+  file: File,
+  onProgress?: (p: UploadProgress) => void,
+): Promise<{ url: string; filename: string }> {
+  const result = await blobUpload(`config/welcome-pack/${file.name}`, file, {
+    access: "public",
+    handleUploadUrl: "/api/upload-url",
+    onUploadProgress: (e) =>
+      onProgress?.({ percent: Math.round((e.loaded / e.total) * 100) }),
+  });
+  return { url: result.url, filename: file.name };
+}
+
 export async function uploadFile(
   file: File,
   options: {
