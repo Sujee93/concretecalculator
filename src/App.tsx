@@ -8,6 +8,7 @@ import {
 import { Shell } from "@/components/Shell";
 import { ProgressBar } from "@/components/ProgressBar";
 import { submitPartialLead } from "@/lib/submit";
+import { sendPartialSubmission } from "@/lib/webhook";
 import { fetchPricingOverrides } from "@/lib/pricingConfig";
 import { applyPricingOverrides } from "@/config/editablePricing";
 import { CustomerDetailsStep } from "@/components/steps/CustomerDetailsStep";
@@ -53,12 +54,12 @@ export default function App() {
       return;
     }
     setErrors({});
-    // First page done — fire the "incomplete lead" alert as a safety net in
-    // case they drop off before finishing. Fire-and-forget; guarded to send
-    // at most once per page load. (The GHL webhook is intentionally NOT fired
-    // here — it only sends on final submission, from the estimate step.)
+    // First page done — fire the "incomplete lead" alert (Resend email to Luke)
+    // and the GHL webhook, both with the contact details. Fire-and-forget and
+    // each guarded to send at most once per page load.
     if (state.step === "customer") {
       submitPartialLead(state.customer); // Resend "incomplete lead" email to Luke
+      sendPartialSubmission(state.customer); // GHL warm-lead webhook (once/session)
     }
     state.next();
   };

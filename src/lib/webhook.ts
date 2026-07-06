@@ -4,13 +4,8 @@
  * The lead event is POSTed straight from the customer's browser (no backend
  * proxy) to a GHL inbound-webhook URL:
  *
- *   full_submission — fires only on final submission, whenever a finish is
- *                     chosen and a price is shown; re-fires for each different
- *                     finish the customer browses (no deduping).
- *
- * (A `partial_submission` event type is retained below for forward
- * compatibility, but nothing fires it — page-1 warm-lead capture is handled by
- * the Resend email flow, not GHL.)
+ *   partial_submission — fires once, as soon as the customer completes the
+ *                        FIRST step (name / phone / email / suburb).
  *
  * Every send is fire-and-forget from the UI's perspective: failures are logged
  * and swallowed, never thrown, so a webhook hiccup can't block or break the form.
@@ -26,42 +21,14 @@
 const WEBHOOK_URL =
   "https://services.leadconnectorhq.com/hooks/4FY1yDon7JUzRs0JC1L0/webhook-trigger/x14dZzrTg82b58OV25xm";
 
-export type WebhookEvent = "partial_submission" | "full_submission";
+export type WebhookEvent = "partial_submission";
 
-// -----------------------------------------------------------------------------
-// Payload shapes (mirror the two documented event bodies, minus `submittedAt`,
-// which sendWebhook stamps).
-// -----------------------------------------------------------------------------
-
+/** Contact fields captured on the first step. */
 export interface PartialSubmission {
   name: string;
   email: string;
   phone: string;
   suburb: string;
-}
-
-export interface WebhookFile {
-  url: string;
-  filename: string;
-  contentType: string;
-  size: number;
-}
-
-export interface FullSubmission extends PartialSubmission {
-  areaSqm: number;
-  areaMethod: "total" | "sections" | "plans";
-  areaSections: { length: number; width: number }[];
-  finish: string;
-  hasRemoval: boolean;
-  slope: string;
-  drainage: string;
-  stripDrainLengthM: number | null;
-  estimateTotalIncGst: number;
-  repaymentWeekly: number;
-  repaymentFortnightly: number;
-  termWeeks: number;
-  plans: WebhookFile[];
-  photos: WebhookFile[];
 }
 
 // -----------------------------------------------------------------------------
@@ -75,7 +42,7 @@ export interface FullSubmission extends PartialSubmission {
  */
 export async function sendWebhook(
   event: WebhookEvent,
-  payload: PartialSubmission | FullSubmission,
+  payload: PartialSubmission,
 ): Promise<boolean> {
   const body = JSON.stringify({
     event,
@@ -127,14 +94,32 @@ export async function sendWebhook(
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // -----------------------------------------------------------------------------
-// Full submission (fires only on final submission; once per finish browsed)
+// Partial submission — fires once, after the first step
 // -----------------------------------------------------------------------------
 
+function isCompleteLead(lead: PartialSubmission): boolean {
+  return (
+    lead.name.trim() !== "" &&
+    lead.phone.trim() !== "" &&
+    lead.suburb.trim() !== "" &&
+    EMAIL_RE.test(lead.email.trim())
+  );
+}
+
+// Session guard: a page load = a session. Resets on full reload.
+let partialSent = false;
+
 /**
- * Fire the priced-lead event. Intentionally un-guarded: call it each time a
- * finish is selected and a price is displayed. Browsing three finishes sends
- * three events.
+ * Fire the warm-lead event. No-ops if it has already fired this session or if
+ * the four required fields aren't all present and the email valid. Safe to call
+ * on every "Next" click — the guards make repeat calls free.
  */
-export function sendFullSubmission(data: FullSubmission): void {
-  void sendWebhook("full_submission", data);
+export function sendPartialSubmission(lead: PartialSubmission): void {
+  if (partialSent) return;
+  if (!isCompleteLead(lead)) return;
+  partialSent = true;
+  void sendWebhook("partial_submission", lead).then((ok) => {
+    // If delivery totally failed, un-latch so a later Next click can retry.
+    if (!ok) partialSent = false;
+  });
 }
