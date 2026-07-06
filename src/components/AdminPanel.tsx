@@ -1,6 +1,7 @@
 /**
- * /admin — Luke's live settings panel. Two sections, one shared password:
- *   • Pricing — finance + base rates (see config/editablePricing.ts)
+ * /admin — Luke's live settings panel. Collapsible sections, one shared
+ * password (always visible at top):
+ *   • Calculator pricing — finance + base rates (see config/editablePricing.ts)
  *   • Welcome email — subject, body copy, and the attached welcome-pack PDF
  *
  * Saves are password-gated server-side. Changes take effect on the next
@@ -105,10 +106,61 @@ function StatusLine({ status }: { status: Status }) {
   );
 }
 
+/** Collapsible section with a clickable header. */
+function Section({
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        border: "1px solid rgba(255,255,255,0.12)",
+        borderRadius: 10,
+        marginTop: 16,
+        overflow: "hidden",
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "14px 16px",
+          background: "rgba(255,255,255,0.04)",
+          border: "none",
+          color: "inherit",
+          font: "inherit",
+          fontWeight: 700,
+          fontSize: 16,
+          cursor: "pointer",
+        }}
+      >
+        <span>{title}</span>
+        <span style={{ opacity: 0.6, fontSize: 13 }}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && <div style={{ padding: "8px 16px 20px" }}>{children}</div>}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 
 export function AdminPanel() {
   const [password, setPassword] = useState("");
+  const [open, setOpen] = useState({ pricing: true, welcome: false });
+  const toggle = (k: "pricing" | "welcome") =>
+    setOpen((o) => ({ ...o, [k]: !o[k] }));
 
   // Pricing
   const [draft, setDraft] = useState<Draft>(() => toDraft(EDITABLE_DEFAULTS));
@@ -230,12 +282,12 @@ export function AdminPanel() {
   };
 
   const box: React.CSSProperties = { maxWidth: 680, margin: "0 auto", padding: "32px 20px 80px" };
-  const sectionTitle: React.CSSProperties = {
-    fontSize: 14,
+  const subTitle: React.CSSProperties = {
+    fontSize: 13,
     textTransform: "uppercase",
     letterSpacing: "0.06em",
     opacity: 0.6,
-    margin: "36px 0 8px",
+    margin: "20px 0 8px",
   };
   const numField = {
     type: "number" as const,
@@ -274,86 +326,99 @@ export function AdminPanel() {
         autoComplete="current-password"
       />
 
-      {/* ---- Pricing ---- */}
-      <div style={sectionTitle}>Finance</div>
-      <Field label="Finance fee (%)" name="financeFeePercent" {...numField} step="0.1"
-        value={draft.financeFeePercent} onChange={setD("financeFeePercent")}
-        hint="Flat merchant fee added to every quote. 15 = 15%." />
-      <Field label="Repayment term (fortnights)" name="financeTermFortnights" {...numField}
-        value={draft.financeTermFortnights} onChange={setD("financeTermFortnights")} hint={termHint} />
-      <Field label="Minimum project price ($)" name="minimumProjectPrice" {...numField} step="100"
-        value={draft.minimumProjectPrice} onChange={setD("minimumProjectPrice")}
-        hint="Ex-GST, ex-finance floor applied to small jobs." />
+      {/* ---- Calculator pricing ---- */}
+      <Section
+        title="Calculator pricing"
+        open={open.pricing}
+        onToggle={() => toggle("pricing")}
+      >
+        <div style={{ ...subTitle, marginTop: 8 }}>Finance</div>
+        <Field label="Finance fee (%)" name="financeFeePercent" {...numField} step="0.1"
+          value={draft.financeFeePercent} onChange={setD("financeFeePercent")}
+          hint="Flat merchant fee added to every quote. 15 = 15%." />
+        <Field label="Repayment term (fortnights)" name="financeTermFortnights" {...numField}
+          value={draft.financeTermFortnights} onChange={setD("financeTermFortnights")} hint={termHint} />
+        <Field label="Minimum project price ($)" name="minimumProjectPrice" {...numField} step="100"
+          value={draft.minimumProjectPrice} onChange={setD("minimumProjectPrice")}
+          hint="Ex-GST, ex-finance floor applied to small jobs." />
 
-      <div style={sectionTitle}>Base rates ($ per m²)</div>
-      <Field label="Natural grey" name="natural_grey" {...numField}
-        value={draft.natural_grey} onChange={setD("natural_grey")} />
-      <Field label="Coloured" name="coloured" {...numField}
-        value={draft.coloured} onChange={setD("coloured")} />
-      <Field label="Pavilion finish" name="pavilion_finish" {...numField}
-        value={draft.pavilion_finish} onChange={setD("pavilion_finish")} />
-      <Field label="Exposed aggregate — under 60m²" name="ea_0_60" {...numField}
-        value={draft.ea_0_60} onChange={setD("ea_0_60")} />
-      <Field label="Exposed aggregate — 60 to 100m²" name="ea_60_100" {...numField}
-        value={draft.ea_60_100} onChange={setD("ea_60_100")} />
-      <Field label="Exposed aggregate — 100m² and over" name="ea_100_plus" {...numField}
-        value={draft.ea_100_plus} onChange={setD("ea_100_plus")} />
+        <div style={subTitle}>Base rates ($ per m²)</div>
+        <Field label="Natural grey" name="natural_grey" {...numField}
+          value={draft.natural_grey} onChange={setD("natural_grey")} />
+        <Field label="Coloured" name="coloured" {...numField}
+          value={draft.coloured} onChange={setD("coloured")} />
+        <Field label="Pavilion finish" name="pavilion_finish" {...numField}
+          value={draft.pavilion_finish} onChange={setD("pavilion_finish")} />
+        <Field label="Exposed aggregate — under 60m²" name="ea_0_60" {...numField}
+          value={draft.ea_0_60} onChange={setD("ea_0_60")} />
+        <Field label="Exposed aggregate — 60 to 100m²" name="ea_60_100" {...numField}
+          value={draft.ea_60_100} onChange={setD("ea_60_100")} />
+        <Field label="Exposed aggregate — 100m² and over" name="ea_100_plus" {...numField}
+          value={draft.ea_100_plus} onChange={setD("ea_100_plus")} />
 
-      <StatusLine status={pricingStatus} />
-      <button type="button" className="btn btn-primary" onClick={onSavePricing}
-        disabled={savingPricing} style={{ width: "100%", marginTop: 4 }}>
-        {savingPricing ? "Saving…" : "Save pricing"}
-      </button>
+        <StatusLine status={pricingStatus} />
+        <button type="button" className="btn btn-primary" onClick={onSavePricing}
+          disabled={savingPricing} style={{ width: "100%", marginTop: 4 }}>
+          {savingPricing ? "Saving…" : "Save pricing"}
+        </button>
+      </Section>
 
       {/* ---- Welcome email ---- */}
-      {welcome && (
-        <>
-          <div style={sectionTitle}>Welcome email</div>
-          <Field label="Subject" name="subject" type="text"
-            value={welcome.subject} onChange={(e) => setW({ subject: e.target.value })} />
-          <TextAreaField
-            label="Body"
-            name="body"
-            rows={16}
-            value={welcome.body}
-            onChange={(e) => setW({ body: e.target.value })}
-            hint="Use {{firstName}} for the customer's first name and {{phone}} for your phone number. Leave a blank line between paragraphs."
-          />
-
-          <div className="field-group">
-            <label>Welcome-pack PDF</label>
-            <p className="form-hint" style={{ margin: "0 0 8px" }}>
-              {welcome.pdfFilename
-                ? `Current: ${welcome.pdfFilename}`
-                : "Current: default welcome pack (Smooth_Concrete_Welcome_Pack.pdf)"}
-              {welcome.pdfUrl && (
-                <>
-                  {" — "}
-                  <a href={welcome.pdfUrl} target="_blank" rel="noopener noreferrer">
-                    view
-                  </a>
-                </>
-              )}
-            </p>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="application/pdf"
-              onChange={onPickPdf}
-              disabled={uploadPct !== null}
+      <Section
+        title="Welcome email"
+        open={open.welcome}
+        onToggle={() => toggle("welcome")}
+      >
+        {welcome ? (
+          <>
+            <Field label="Subject" name="subject" type="text"
+              value={welcome.subject} onChange={(e) => setW({ subject: e.target.value })} />
+            <TextAreaField
+              label="Body"
+              name="body"
+              rows={16}
+              value={welcome.body}
+              onChange={(e) => setW({ body: e.target.value })}
+              hint="Use {{firstName}} for the customer's first name and {{phone}} for your phone number. Leave a blank line between paragraphs."
             />
-            {uploadPct !== null && (
-              <p className="form-hint">Uploading… {uploadPct}%</p>
-            )}
-          </div>
 
-          <StatusLine status={welcomeStatus} />
-          <button type="button" className="btn btn-primary" onClick={onSaveWelcome}
-            disabled={savingWelcome || uploadPct !== null} style={{ width: "100%", marginTop: 4 }}>
-            {savingWelcome ? "Saving…" : "Save welcome email"}
-          </button>
-        </>
-      )}
+            <div className="field-group">
+              <label>Welcome-pack PDF</label>
+              <p className="form-hint" style={{ margin: "0 0 8px" }}>
+                {welcome.pdfFilename
+                  ? `Current: ${welcome.pdfFilename}`
+                  : "Current: default welcome pack (Smooth_Concrete_Welcome_Pack.pdf)"}
+                {welcome.pdfUrl && (
+                  <>
+                    {" — "}
+                    <a href={welcome.pdfUrl} target="_blank" rel="noopener noreferrer">
+                      view
+                    </a>
+                  </>
+                )}
+              </p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/pdf"
+                onChange={onPickPdf}
+                disabled={uploadPct !== null}
+              />
+              {uploadPct !== null && (
+                <p className="form-hint">Uploading… {uploadPct}%</p>
+              )}
+            </div>
+
+            <StatusLine status={welcomeStatus} />
+            <button type="button" className="btn btn-primary" onClick={onSaveWelcome}
+              disabled={savingWelcome || uploadPct !== null} style={{ width: "100%", marginTop: 4 }}>
+              {savingWelcome ? "Saving…" : "Save welcome email"}
+            </button>
+          </>
+        ) : (
+          <p className="form-hint">Couldn't load welcome settings — reload the page.</p>
+        )}
+      </Section>
     </div>
   );
 }
