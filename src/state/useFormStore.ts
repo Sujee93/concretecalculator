@@ -20,6 +20,7 @@ import {
   type UploadedFile,
 } from "@/types/form";
 import type { Finish, Slope } from "@/lib/pricing";
+import { EMAIL_RE } from "@/lib/webhook";
 
 export { STEP_ORDER };
 
@@ -41,9 +42,11 @@ interface FormActions {
   removePlan: (url: string) => void;
   addPhoto: (file: UploadedFile) => void;
   removePhoto: (url: string) => void;
+  /** Bumped after live pricing overrides are applied, to trigger a recompute. */
+  bumpPricingVersion: () => void;
 }
 
-export type FormStore = FormState & FormActions;
+export type FormStore = FormState & FormActions & { pricingVersion: number };
 
 const newSectionId = () =>
   globalThis.crypto?.randomUUID?.() ??
@@ -51,6 +54,10 @@ const newSectionId = () =>
 
 export const useFormStore = create<FormStore>((set) => ({
   ...INITIAL_FORM_STATE,
+  pricingVersion: 0,
+
+  bumpPricingVersion: () =>
+    set((s) => ({ pricingVersion: s.pricingVersion + 1 })),
 
   setStep: (step) => set({ step }),
 
@@ -138,7 +145,10 @@ export function validateStep(state: FormState): StepValidation {
         errors.phone = "Phone number is required.";
       if (!state.customer.email.trim()) {
         errors.email = "Email address is required.";
-      } else if (!state.customer.email.includes("@")) {
+      } else if (!EMAIL_RE.test(state.customer.email.trim())) {
+        // Same pattern the GHL partial-lead webhook guards on (see
+        // lib/webhook.ts). Keeping them identical guarantees any email that
+        // passes page 1 also fires the partial_submission — no silent skips.
         errors.email = "Please enter a valid email address.";
       }
       if (!state.customer.suburb.trim())

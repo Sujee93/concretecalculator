@@ -1,10 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { AdminPricing } from "./components/AdminPricing";
 import "./styles/globals.css";
 
+// Tiny path-based route: /admin serves Luke's pricing editor, everything else
+// serves the calculator. (Vercel's SPA fallback serves index.html for /admin.)
+const isAdmin =
+  window.location.pathname.replace(/\/+$/, "").toLowerCase() === "/admin";
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+  <React.StrictMode>{isAdmin ? <AdminPricing /> : <App />}</React.StrictMode>,
 );

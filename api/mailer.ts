@@ -26,6 +26,14 @@ export const CC_RECIPIENTS = (
   .map((s) => s.trim())
   .filter(Boolean);
 
+export interface EmailAttachment {
+  filename: string;
+  /** Hosted URL Resend fetches at send time (mutually exclusive with content). */
+  path?: string;
+  /** Base64 / Buffer content, if attaching inline instead of by URL. */
+  content?: string;
+}
+
 export interface EmailArgs {
   from: string;
   to: string;
@@ -33,6 +41,7 @@ export interface EmailArgs {
   replyTo?: string;
   subject: string;
   html: string;
+  attachments?: EmailAttachment[];
 }
 
 export async function sendEmail(
@@ -45,6 +54,11 @@ export async function sendEmail(
     console.log("  to:", args.to);
     if (args.cc?.length) console.log("  cc:", args.cc.join(", "));
     console.log("  subject:", args.subject);
+    if (args.attachments?.length)
+      console.log(
+        "  attachments:",
+        args.attachments.map((a) => a.filename).join(", "),
+      );
     return;
   }
   const resend = new Resend(apiKey);
@@ -55,6 +69,7 @@ export async function sendEmail(
     replyTo: args.replyTo,
     subject: args.subject,
     html: args.html,
+    attachments: args.attachments?.length ? args.attachments : undefined,
   });
   if (result.error) {
     throw new Error(`Resend error: ${result.error.message}`);

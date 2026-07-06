@@ -3,6 +3,7 @@ import { computeAreaSqm, useFormStore } from "@/state/useFormStore";
 import { calculateEstimate, type Drainage } from "@/lib/pricing";
 import { formatCurrency } from "@/lib/format";
 import { submitInquiry } from "@/lib/submit";
+import { sendFullSubmission } from "@/lib/webhook";
 import type { SubmissionPayload } from "@/types/form";
 import {
   CalendarIcon,
@@ -40,6 +41,44 @@ export function EstimateStep() {
           : undefined,
     });
   }, [areaSqm, state]);
+
+  // GHL full_submission webhook — fires whenever a finish is selected and a
+  // price is displayed. Keyed on the finish so browsing to a different finish
+  // (and landing back here) re-fires with the new price; no deduping. Skips the
+  // plans path, which shows no computed price.
+  useEffect(() => {
+    if (isPlans || !estimate || !state.slope || !state.drainage.answer) return;
+    sendFullSubmission({
+      name: state.customer.name,
+      email: state.customer.email,
+      phone: state.customer.phone,
+      suburb: state.customer.suburb,
+      areaSqm,
+      areaMethod: state.area.method ?? "total",
+      areaSections:
+        state.area.method === "sections"
+          ? state.area.sections
+              .filter((s) => Number(s.length) > 0 && Number(s.width) > 0)
+              .map((s) => ({ length: Number(s.length), width: Number(s.width) }))
+          : [],
+      finish: state.finish!,
+      hasRemoval: state.hasRemoval ?? false,
+      slope: state.slope,
+      drainage: state.drainage.answer,
+      stripDrainLengthM:
+        state.drainage.answer === "yes" &&
+        typeof state.drainage.lengthM === "number"
+          ? state.drainage.lengthM
+          : null,
+      estimateTotalIncGst: estimate.finalIncGst,
+      repaymentWeekly: estimate.repayment.weekly,
+      repaymentFortnightly: estimate.repayment.fortnightly,
+      termWeeks: estimate.repayment.termWeeks,
+      plans: state.plans,
+      photos: state.photos,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.finish]);
 
   const buildPayload = (): SubmissionPayload => ({
     customer: state.customer,

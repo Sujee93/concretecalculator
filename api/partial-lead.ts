@@ -12,7 +12,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { z } from "zod";
 // Explicit .js extension — see note in submit.ts (ESM under "type":"module").
-import { buildPartialLeadEmail } from "./emails.js";
+import { buildPartialLeadEmail, buildWelcomePackEmail } from "./emails.js";
 import {
   SENDER_EMAIL,
   INQUIRY_RECIPIENT,
@@ -61,9 +61,16 @@ export default async function handler(
   }
 
   const { customer, sourceUrl } = parsed.data;
+  const apiKey = process.env.RESEND_API_KEY;
 
+  // Both sends are best-effort and independent. We deliberately return 200 even
+  // if one fails: the client resets its "sent once" guard on a non-2xx response
+  // and would re-POST, which must never double-send the customer welcome email.
+  // Individual failures are logged instead.
+
+  // 1. Internal "incomplete lead" alert to Luke (+ CC).
   try {
-    await sendEmail(process.env.RESEND_API_KEY, {
+    await sendEmail(apiKey, {
       from: SENDER_EMAIL,
       to: INQUIRY_RECIPIENT,
       cc: CC_RECIPIENTS,
@@ -71,11 +78,54 @@ export default async function handler(
       subject: `New Lead (incomplete) — ${customer.name}`,
       html: buildPartialLeadEmail(customer, sourceUrl),
     });
-
-    res.status(200).json({ success: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("Partial-lead email send failed:", message);
-    res.status(500).json({ success: false, error: message });
+    console.error(
+      "Partial-lead internal alert failed:",
+      err instanceof Error ? err.message : String(err),
+    );
   }
+
+  // 2. Welcome-pack email to the customer, with the PDF attached. Fires once
+  //    because the client calls this endpoint at most once per session.
+  try {
+    const welcomePackUrl = resolveWelcomePackUrl(req);
+    await sendEmail(apiKey, {
+      from: SENDER_EMAIL,
+      to: customer.email,
+      replyTo: INQUIRY_RECIPIENT, // customer replies go to Luke
+      subject: "Welcome to Smooth Concrete — your welcome pack",
+      html: buildWelcomePackEmail(customer),
+      attachments: welcomePackUrl
+        ? [
+            {
+              filename: "Smooth Concrete Welcome Pack.pdf",
+              path: welcomePackUrl,
+            },
+          ]
+        : undefined,
+    });
+  } catch (err) {
+    console.error(
+      "Welcome-pack email failed:",
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+
+  res.status(200).json({ success: true });
+}
+
+/**
+ * Absolute URL of the welcome-pack PDF for Resend to fetch and attach.
+ * Prefers WELCOME_PACK_URL; otherwise derives it from the request host, since
+ * the PDF ships in /public and is served from the same Vercel deployment that
+ * hosts this function.
+ */
+function resolveWelcomePackUrl(req: VercelRequest): string | undefined {
+  if (process.env.WELCOME_PACK_URL) return process.env.WELCOME_PACK_URL;
+  const host = req.headers.host;
+  if (!host) return undefined;
+  const proto =
+    (req.headers["x-forwarded-proto"] as string | undefined)?.split(",")[0] ||
+    "https";
+  return `${proto}://${host}/Smooth_Concrete_Welcome_Pack.pdf`;
 }

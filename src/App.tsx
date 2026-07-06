@@ -8,6 +8,8 @@ import {
 import { Shell } from "@/components/Shell";
 import { ProgressBar } from "@/components/ProgressBar";
 import { submitPartialLead } from "@/lib/submit";
+import { fetchPricingOverrides } from "@/lib/pricingConfig";
+import { applyPricingOverrides } from "@/config/editablePricing";
 import { CustomerDetailsStep } from "@/components/steps/CustomerDetailsStep";
 import { AreaStep } from "@/components/steps/AreaStep";
 import { AreaDetailStep } from "@/components/steps/AreaDetailStep";
@@ -21,6 +23,21 @@ import { EstimateStep } from "@/components/steps/EstimateStep";
 export default function App() {
   const state = useFormStore();
   const [errors, setErrors] = useState<StepErrors>({});
+
+  // On load, pull any live pricing overrides Luke has saved and apply them to
+  // the shared PRICING singleton, then bump pricingVersion so the estimate
+  // recomputes with the new numbers. Fails silently → hardcoded defaults.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPricingOverrides().then((cfg) => {
+      if (cancelled) return;
+      applyPricingOverrides(cfg);
+      useFormStore.getState().bumpPricingVersion();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Clear errors + scroll content to top whenever the step changes.
   useEffect(() => {
@@ -38,9 +55,10 @@ export default function App() {
     setErrors({});
     // First page done — fire the "incomplete lead" alert as a safety net in
     // case they drop off before finishing. Fire-and-forget; guarded to send
-    // at most once per page load.
+    // at most once per page load. (The GHL webhook is intentionally NOT fired
+    // here — it only sends on final submission, from the estimate step.)
     if (state.step === "customer") {
-      submitPartialLead(state.customer);
+      submitPartialLead(state.customer); // Resend "incomplete lead" email to Luke
     }
     state.next();
   };

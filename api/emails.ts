@@ -167,6 +167,49 @@ export function buildPartialLeadEmail(
   );
 }
 
+// =============================================================================
+// Welcome-pack email to the CUSTOMER — fires once on page-1 (partial) submit.
+// Luke's approved copy; the welcome-pack PDF is attached by the caller. The
+// `[Phone Number]` line only renders when SMOOTH_CONCRETE_PHONE is set (so we
+// never email a customer a literal "[Phone Number]" placeholder).
+// =============================================================================
+
+export function buildWelcomePackEmail(customer: { name: string }): string {
+  const firstName = customer.name.trim().split(/\s+/)[0] || "there";
+  const phone = process.env.SMOOTH_CONCRETE_PHONE?.trim();
+
+  const p = (text: string) =>
+    `<p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:${C.text};">${text}</p>`;
+
+  return `
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,Helvetica,sans-serif;">
+    <div style="max-width:600px;margin:0 auto;padding:32px 24px;background:${C.bg};">
+      <div style="height:6px;background:${C.brand};border-radius:3px;margin-bottom:28px;"></div>
+      ${p(`Hi ${escapeHtml(firstName)},`)}
+      ${p("Thank you for your interest in Smooth Concrete.")}
+      ${p("We noticed you began completing our driveway enquiry form, so we wanted to reach out personally and say hello.")}
+      ${p("Customer satisfaction is something we take very seriously here at Smooth Concrete, and we'd like to share our welcome pack with you so you can learn more about who we are, our process, and the quality of work we're proud to deliver.")}
+      ${p("Once you finish completing the online calculator, your details and job information will be sent across to me. I'll then do a final review and contact you directly to discuss your project.")}
+      ${p("In the meantime, if there's anything you need, feel free to reach out by phone or email and either myself or one of our team members will get back to you as soon as possible.")}
+      <p style="margin:24px 0 0 0;font-size:15px;line-height:1.6;color:${C.text};">
+        Kind regards,<br/>
+        <strong>Luke</strong><br/>
+        Smooth Concrete${phone ? `<br/>${escapeHtml(phone)}` : ""}
+      </p>
+      <p style="margin:28px 0 0 0;font-size:13px;color:${C.mute};border-top:1px solid ${C.border};padding-top:16px;">
+        📎 Your Smooth Concrete welcome pack is attached to this email as a PDF.
+      </p>
+    </div>
+  </body>
+</html>`.trim();
+}
+
 function buildAttachmentsSection(
   plans: { url: string; filename: string; contentType: string; size: number }[],
   photos: { url: string; filename: string; contentType: string; size: number }[],
