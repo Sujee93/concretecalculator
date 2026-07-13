@@ -31,6 +31,17 @@ export interface PricingConfig {
     };
     pavilion_finish: number;
   };
+  /**
+   * Which finishes are offered on the calculator's Finish step. Rates always
+   * exist in `baseRates`; this only controls visibility, so Luke can retire a
+   * finish (e.g. Pavilion) without touching its price. All default to true.
+   */
+  enabledFinishes: {
+    natural_grey: boolean;
+    coloured: boolean;
+    exposed_aggregate: boolean;
+    pavilion_finish: boolean;
+  };
   excavation: {
     baseAllowance: number;
     above_65: number;
@@ -88,6 +99,12 @@ export const PRICING: PricingConfig = {
       range_100_plus: 190,
     },
     pavilion_finish: 150,
+  },
+  enabledFinishes: {
+    natural_grey: true,
+    coloured: true,
+    exposed_aggregate: true,
+    pavilion_finish: true,
   },
   excavation: {
     baseAllowance: 1500,

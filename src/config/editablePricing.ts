@@ -32,6 +32,13 @@ export interface EditablePricing {
       range_100_plus: number;
     };
   };
+  /** Per-finish visibility on the calculator. See PricingConfig.enabledFinishes. */
+  enabledFinishes: {
+    natural_grey: boolean;
+    coloured: boolean;
+    exposed_aggregate: boolean;
+    pavilion_finish: boolean;
+  };
 }
 
 /**
@@ -49,11 +56,16 @@ export const EDITABLE_DEFAULTS: EditablePricing = {
     pavilion_finish: PRICING.baseRates.pavilion_finish,
     exposed_aggregate: { ...PRICING.baseRates.exposed_aggregate },
   },
+  enabledFinishes: { ...PRICING.enabledFinishes },
 };
 
 /** Coerce to a finite number, else fall back. */
 const num = (v: unknown, fallback: number): number =>
   typeof v === "number" && Number.isFinite(v) ? v : fallback;
+
+/** Coerce to a boolean, else fall back (so a missing/legacy field defaults on). */
+const bool = (v: unknown, fallback: boolean): boolean =>
+  typeof v === "boolean" ? v : fallback;
 
 /**
  * Merge a stored (possibly partial or malformed) override object over the
@@ -94,5 +106,25 @@ export function applyPricingOverrides(
   PRICING.baseRates.exposed_aggregate.range_100_plus = num(
     ea.range_100_plus,
     d.baseRates.exposed_aggregate.range_100_plus,
+  );
+
+  const ef = (c.enabledFinishes ?? {}) as Partial<
+    EditablePricing["enabledFinishes"]
+  >;
+  PRICING.enabledFinishes.natural_grey = bool(
+    ef.natural_grey,
+    d.enabledFinishes.natural_grey,
+  );
+  PRICING.enabledFinishes.coloured = bool(
+    ef.coloured,
+    d.enabledFinishes.coloured,
+  );
+  PRICING.enabledFinishes.exposed_aggregate = bool(
+    ef.exposed_aggregate,
+    d.enabledFinishes.exposed_aggregate,
+  );
+  PRICING.enabledFinishes.pavilion_finish = bool(
+    ef.pavilion_finish,
+    d.enabledFinishes.pavilion_finish,
   );
 }

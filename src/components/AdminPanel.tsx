@@ -36,6 +36,11 @@ interface Draft {
   ea_0_60: string;
   ea_60_100: string;
   ea_100_plus: string;
+  // Which finishes appear on the calculator (rates above still apply either way).
+  on_natural_grey: boolean;
+  on_coloured: boolean;
+  on_exposed_aggregate: boolean;
+  on_pavilion_finish: boolean;
 }
 
 function toDraft(cfg: EditablePricing): Draft {
@@ -49,6 +54,10 @@ function toDraft(cfg: EditablePricing): Draft {
     ea_0_60: String(cfg.baseRates.exposed_aggregate.range_0_60),
     ea_60_100: String(cfg.baseRates.exposed_aggregate.range_60_100),
     ea_100_plus: String(cfg.baseRates.exposed_aggregate.range_100_plus),
+    on_natural_grey: cfg.enabledFinishes.natural_grey,
+    on_coloured: cfg.enabledFinishes.coloured,
+    on_exposed_aggregate: cfg.enabledFinishes.exposed_aggregate,
+    on_pavilion_finish: cfg.enabledFinishes.pavilion_finish,
   };
 }
 
@@ -73,6 +82,14 @@ function fromDraft(d: Draft): { config: EditablePricing } | { error: string } {
     return { error: "Term must be a whole number of fortnights (1 or more)." };
   if (Object.values(v).some((x) => x < 0))
     return { error: "Pricing values can't be negative." };
+  const enabledFinishes = {
+    natural_grey: d.on_natural_grey,
+    coloured: d.on_coloured,
+    exposed_aggregate: d.on_exposed_aggregate,
+    pavilion_finish: d.on_pavilion_finish,
+  };
+  if (!Object.values(enabledFinishes).some(Boolean))
+    return { error: "At least one finish must stay switched on." };
   return {
     config: {
       financeFeeRate: v.fee / 100,
@@ -84,6 +101,7 @@ function fromDraft(d: Draft): { config: EditablePricing } | { error: string } {
         pavilion_finish: v.pav,
         exposed_aggregate: { range_0_60: v.e1, range_60_100: v.e2, range_100_plus: v.e3 },
       },
+      enabledFinishes,
     },
   };
 }
@@ -103,6 +121,43 @@ function StatusLine({ status }: { status: Status }) {
     >
       <span>{status.text}</span>
     </p>
+  );
+}
+
+/** A labelled on/off switch for showing/hiding a finish on the calculator. */
+function ToggleRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <label
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        padding: "10px 0",
+        cursor: "pointer",
+      }}
+    >
+      <span style={{ opacity: checked ? 1 : 0.55 }}>{label}</span>
+      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 12, opacity: 0.6, minWidth: 22, textAlign: "right" }}>
+          {checked ? "On" : "Off"}
+        </span>
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={onChange}
+          style={{ width: 18, height: 18, cursor: "pointer" }}
+        />
+      </span>
+    </label>
   );
 }
 
@@ -196,6 +251,12 @@ export function AdminPanel() {
     setDraft((d) => ({ ...d, [k]: val }));
     setPricingStatus(null);
   };
+  const setToggle =
+    (k: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      const checked = e.target.checked;
+      setDraft((d) => ({ ...d, [k]: checked }));
+      setPricingStatus(null);
+    };
   const setW = (patch: Partial<WelcomeConfig>) => {
     setWelcome((w) => (w ? { ...w, ...patch } : w));
     setWelcomeStatus(null);
@@ -355,6 +416,20 @@ export function AdminPanel() {
           value={draft.ea_60_100} onChange={setD("ea_60_100")} />
         <Field label="Exposed aggregate — 100m² and over" name="ea_100_plus" {...numField}
           value={draft.ea_100_plus} onChange={setD("ea_100_plus")} />
+
+        <div style={subTitle}>Finishes shown to customers</div>
+        <p className="form-hint" style={{ margin: "0 0 4px" }}>
+          Switch a finish off to hide it from the calculator. Its rate above is
+          kept, so you can switch it back on any time.
+        </p>
+        <ToggleRow label="Natural grey" checked={draft.on_natural_grey}
+          onChange={setToggle("on_natural_grey")} />
+        <ToggleRow label="Coloured" checked={draft.on_coloured}
+          onChange={setToggle("on_coloured")} />
+        <ToggleRow label="Exposed aggregate" checked={draft.on_exposed_aggregate}
+          onChange={setToggle("on_exposed_aggregate")} />
+        <ToggleRow label="Pavilion finish" checked={draft.on_pavilion_finish}
+          onChange={setToggle("on_pavilion_finish")} />
 
         <StatusLine status={pricingStatus} />
         <button type="button" className="btn btn-primary" onClick={onSavePricing}

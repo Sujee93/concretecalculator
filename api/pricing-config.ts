@@ -40,6 +40,21 @@ const editableSchema = z.object({
       range_100_plus: money,
     }),
   }),
+  // Optional so pre-existing stored blobs (written before this field existed)
+  // still validate; the client always sends it now. Defaults every finish on.
+  enabledFinishes: z
+    .object({
+      natural_grey: z.boolean(),
+      coloured: z.boolean(),
+      exposed_aggregate: z.boolean(),
+      pavilion_finish: z.boolean(),
+    })
+    .default({
+      natural_grey: true,
+      coloured: true,
+      exposed_aggregate: true,
+      pavilion_finish: true,
+    }),
 });
 
 async function readOverrides(): Promise<unknown | null> {
