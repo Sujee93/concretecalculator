@@ -105,6 +105,38 @@ Notes on the snippet:
 
 ---
 
+## 3b. Meta Pixel `Contact` event (REQUIRED for the interest-free campaign)
+
+The campaign runs on Meta, so the only conversion event needed is **Contact**,
+fired when the customer submits the contact-details step (step 1).
+
+The Pixel lives on this **parent** WordPress page; the calculator runs inside
+the iframe on a different origin, so `fbq` is not callable from inside it — and
+the Meta **Event Setup Tool cannot be used** here for the same reason. Instead
+the calculator `postMessage`s a marker up to the parent, and the parent fires
+the Pixel event.
+
+Add this snippet to the WordPress page **once** (footer, theme, or GTM Custom
+HTML tag), after the base Pixel code:
+
+```html
+<script>
+  window.addEventListener("message", function (event) {
+    if (event.data && event.data.type === "META_CONTACT_EVENT") {
+      if (typeof window.fbq === "function") {
+        window.fbq("track", "Contact");
+      }
+    }
+  });
+</script>
+```
+
+Testing: Meta Events Manager → **Test Events** → open the LP, fill in the
+contact-details step, click **Get my estimate** → the `Contact` event should
+appear. It fires at most once per page load.
+
+---
+
 ## 4. WordPress / Elementor side — step by step
 
 > **Use the test page first**, not the live LP. The spec calls this the

@@ -9,6 +9,7 @@ import { Shell } from "@/components/Shell";
 import { ProgressBar } from "@/components/ProgressBar";
 import { submitPartialLead } from "@/lib/submit";
 import { sendPartialSubmission } from "@/lib/webhook";
+import { trackMetaContact } from "@/lib/metaPixel";
 import { fetchPricingOverrides } from "@/lib/pricingConfig";
 import { applyPricingOverrides } from "@/config/editablePricing";
 import { CustomerDetailsStep } from "@/components/steps/CustomerDetailsStep";
@@ -60,6 +61,7 @@ export default function App() {
     if (state.step === "customer") {
       submitPartialLead(state.customer); // Resend "incomplete lead" email to Luke
       sendPartialSubmission(state.customer); // GHL warm-lead webhook (once/session)
+      trackMetaContact(); // Meta Pixel `Contact` (via parent page; once/session)
     }
     state.next();
   };
@@ -98,7 +100,11 @@ export default function App() {
             className="btn btn-primary"
             onClick={handleNext}
           >
-            {isLastInputStep ? "See estimate →" : "Next →"}
+            {isFirstStep
+              ? "Get my estimate →"
+              : isLastInputStep
+                ? "See estimate →"
+                : "Next →"}
           </button>
         </div>
       )}
