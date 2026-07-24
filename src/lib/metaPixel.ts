@@ -16,11 +16,14 @@ let contactFired = false;
 
 /** Fire the Meta `Contact` event once per page load. */
 export function trackMetaContact(): void {
+  console.log('[DEBUG] trackMetaContact called');
   if (contactFired) return;
   contactFired = true;
+  console.log('[DEBUG] about to postMessage, window.parent === window?', window.parent === window);
   try {
     window.parent?.postMessage({ type: META_CONTACT_EVENT }, "*");
-  } catch {
-    // Cross-origin restrictions or no parent — nothing else to do.
+    console.log('[DEBUG] postMessage sent successfully');
+  } catch (err) {
+    console.log('[DEBUG] postMessage threw an error:', err);
   }
 }
