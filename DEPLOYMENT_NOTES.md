@@ -1,10 +1,18 @@
 # Deployment Notes
 
-Everything you need to deploy the Smooth Concrete calculator to Vercel, wire
-the inquiry emails through Resend, and embed the result in the Elementor
-landing page at `interestfreedriveway.uprisedigital.io`.
+> **This app now deploys to Hostinger, not Vercel** — see
+> [`HOSTINGER_DEPLOYMENT.md`](./HOSTINGER_DEPLOYMENT.md) for the current
+> hosting setup (a self-hosted Express server replaces the old Vercel
+> serverless functions + Blob storage). Sections 1–4 and 7 below (visual
+> direction, iframe embed, Meta Pixel, Elementor steps, Resend setup) are
+> unchanged and still apply; sections 5, 6, and 8 are superseded by the
+> Hostinger doc.
 
-**Deployed URL**: _TODO — paste here after `vercel --prod` succeeds._
+Everything you need to wire the inquiry emails through Resend and embed the
+result in the Elementor landing page at
+`interestfreedriveway.uprisedigital.io`.
+
+**Deployed URL**: _TODO — paste here once deployed to Hostinger._
 
 ---
 
@@ -54,12 +62,12 @@ even if the iframe slot widens.
 ## 3. Elementor embed snippet
 
 Drop this into an Elementor **HTML** widget (also called Custom HTML in some
-versions). Replace `https://YOUR-VERCEL-URL.vercel.app` with the deployed URL
-once `vercel --prod` completes.
+versions). Replace `https://YOUR-DEPLOYED-URL` with the calculator's deployed
+URL (see `HOSTINGER_DEPLOYMENT.md`).
 
 ```html
 <!-- Smooth Concrete driveway calculator
-     Embeds the Vercel app as an iframe. Calculator renders at 380px wide;
+     Embeds the app as an iframe. Calculator renders at 380px wide;
      surrounding column should be at least 380px to avoid horizontal scroll
      on the iframe scrollbar.
 -->
@@ -84,7 +92,7 @@ once `vercel --prod` completes.
 </style>
 <div class="smooth-concrete-calc-wrap">
   <iframe
-    src="https://YOUR-VERCEL-URL.vercel.app/"
+    src="https://YOUR-DEPLOYED-URL/"
     title="Driveway estimate calculator"
     loading="lazy"
     referrerpolicy="strict-origin-when-cross-origin"
@@ -151,7 +159,7 @@ appear. It fires at most once per page load.
 4. From the left panel, drag an **HTML** widget into the column where the
    form used to sit.
 5. Paste the snippet above into the widget's "HTML Code" area. Replace
-   `YOUR-VERCEL-URL.vercel.app` with your deployed URL.
+   `YOUR-DEPLOYED-URL` with your deployed URL.
 6. **Update** the page (top right).
 7. Open the page in a private window. Walk through the calculator end-to-end
    on the test page. Verify the inquiry email arrives.
@@ -164,93 +172,12 @@ Elementor form widget back in.
 
 ---
 
-## 5. Vercel deployment
+## 5. Hosting + file storage
 
-### One-time setup
-
-1. Install the Vercel CLI globally if you don't have it: `npm i -g vercel`.
-2. Log in: `vercel login`.
-3. From this repo: `vercel link` (choose your team, "Create a new project",
-   accept the defaults — `vercel.json` already pins the framework and the
-   serverless function).
-
-### Deploy
-
-```bash
-vercel --prod
-```
-
-Pushes a fresh build to production. Vercel will:
-
-- run `npm run build` (which runs `tsc --noEmit && vite build`)
-- serve `dist/` as static
-- deploy `api/submit.ts` as a Node serverless function (10s max duration,
-  256MB memory — already pinned in `vercel.json`)
-
-### Environment variables
-
-In the Vercel dashboard: **Project → Settings → Environment Variables**. Set
-**each variable in all three scopes** (Production, Preview, Development).
-
-| Variable | Scope | Value |
-| --- | --- | --- |
-| `RESEND_API_KEY` | All three | From <https://resend.com/api-keys>. Server-side only. |
-| `INQUIRY_RECIPIENT_EMAIL` | All three | `lukeshah100@gmail.com` (or current preferred address). |
-| `SENDER_EMAIL` | All three | `onboarding@resend.dev` for v1. **Don't paste the production domain until DNS is verified — see Resend section below.** |
-| `BLOB_READ_WRITE_TOKEN` | All three | Auto-injected by Vercel when Blob is enabled on the project (see Blob storage section below). |
-| `VITE_HUM_PORTAL_URL` | All three | **TODO Monday.** Do NOT deploy to Production with the placeholder URL. |
-
-**Important**: after changing env vars, redeploy (`vercel --prod`) — env
-changes don't propagate to existing deployments automatically.
-
-### Preview deploys
-
-Every push (when you connect a git remote) gets a Preview URL with the
-Preview-scope env vars. Useful for QA before promoting to Production.
-
----
-
-## 6. Blob storage (Vercel Blob) — for plans + photos
-
-The Area step's "I'll upload plans or photos" option and the Photos step both
-write directly to Vercel Blob from the browser via short-lived signed tokens
-minted by `/api/upload-url`. The submission email Luke receives contains
-thumbnails and links to each uploaded file.
-
-### Enable Blob on the project
-
-1. In the Vercel dashboard: **Project → Storage → Connect Store → Blob**.
-2. Vercel creates a store and auto-injects `BLOB_READ_WRITE_TOKEN` into all
-   three env scopes (Production, Preview, Development).
-3. Redeploy (`vercel --prod`) so the function picks up the new env var.
-
-That's it — no AWS keys, no separate bucket setup.
-
-### Local dev with Blob
-
-`npx vercel env pull .env.local` pulls the token down to your machine so
-the dev middleware can mint upload URLs locally. Without the token,
-`/api/upload-url` returns 503 with a clear message and uploads at the
-area/photos steps will fail with that error text shown in the file row.
-
-### File constraints
-
-`api/upload-url.ts` enforces:
-- **Max file size**: 10 MB (matches original `pricing.yaml:max_upload_size_mb`)
-- **Allowed types**: `image/jpeg`, `image/png`, `image/gif`, `image/webp`, `application/pdf`
-- **Path scheme**: `inquiries/{YYYY-MM-DD}/{plans|photos}/{filename}` with a
-  random suffix to avoid collisions
-
-### Retention / cost
-
-Vercel Blob's free tier is 500 MB storage and 1 GB bandwidth per month. At a
-rough estimate (one inquiry = ~5 MB total, ~50 inquiries/month) the free tier
-covers more than 100× the expected volume. If volume grows, the next tier
-is $0.15/GB stored / $0.30/GB egress — still trivial.
-
-There's no automatic delete. If you want files purged after N days,
-schedule a Vercel Cron that calls `del()` from `@vercel/blob` for paths
-older than your retention window.
+Superseded by [`HOSTINGER_DEPLOYMENT.md`](./HOSTINGER_DEPLOYMENT.md), which
+covers deploying the self-hosted Express server (`server/`) to Hostinger,
+required env vars, and where uploaded plans/photos + admin-edited config now
+live (local disk under `DATA_DIR`, replacing Vercel Blob).
 
 ## 7. Resend setup
 
@@ -259,7 +186,8 @@ older than your retention window.
 1. Create a Resend account at <https://resend.com> (free tier = 100
    emails/day, plenty for inquiry volume).
 2. **API Keys → Create API Key**. Permissions: `Sending access` (writes only).
-3. Copy the key into Vercel env vars (`RESEND_API_KEY`, all three scopes).
+3. Copy the key into the app's env vars (`RESEND_API_KEY` — see
+   `HOSTINGER_DEPLOYMENT.md`).
 
 ### v1 sender (sandbox)
 
@@ -286,9 +214,10 @@ When DNS access to `smoothconcrete.com.au` is sorted:
    and DMARC (TXT). Add these to the Hostinger DNS panel for
    `smoothconcrete.com.au`. Propagation is usually 5–60 minutes but can take
    up to 24 hours.
-3. Once Resend shows the domain as **Verified**, update the Vercel env var:
+3. Once Resend shows the domain as **Verified**, update the env var in
+   hPanel:
    - `SENDER_EMAIL=inquiries@smoothconcrete.com.au`
-4. Redeploy (`vercel --prod`).
+4. Redeploy (hPanel → the Node.js app → Redeploy, or push to the connected branch).
 5. Send a test inquiry. Confirm the email arrives from
    `inquiries@smoothconcrete.com.au` and that Gmail / Outlook show the
    sender as verified (no "via resend.dev" caption).
@@ -298,10 +227,10 @@ When DNS access to `smoothconcrete.com.au` is sorted:
 Before pasting the embed snippet into the live LP:
 
 ```bash
-# 1. Deploy to a Preview URL
-vercel
+# 1. Deploy (see HOSTINGER_DEPLOYMENT.md), or run locally with
+#    npm run dev:server + npm run dev
 
-# 2. Open the Preview URL, walk through with eligible details.
+# 2. Open the deployed (or local) URL, walk through with eligible details.
 #    Click "Continue to HUM Finance". Verify:
 #    - Resend dashboard (Logs tab) shows the send
 #    - Luke's inbox receives the inquiry email
@@ -316,30 +245,16 @@ vercel
 
 ---
 
-## 8. Local development against the function
+## 8. Local development against the backend
 
-The Vite dev server (`npm run dev`) is fast but doesn't emulate `/api/submit`.
-For end-to-end local testing:
-
-```bash
-# Once: link the project to Vercel (only needed to pick up project env vars)
-npx vercel link
-
-# Pull preview-env vars locally (optional — stubs work without these)
-npx vercel env pull .env.local
-
-# Run the full dev environment (function + SPA on localhost:3000)
-npx vercel dev
-```
-
-Without `RESEND_API_KEY`, the function runs in **stub mode** and logs the
-email payload to stdout. The form will report success and the
-redirect/rejection flow works as normal — useful for UI work without burning
-real emails.
+Superseded by [`HOSTINGER_DEPLOYMENT.md`](./HOSTINGER_DEPLOYMENT.md) §6 —
+run `npm run dev:server` (Express API) and `npm run dev` (Vite, proxying
+`/api` + `/uploads` to it) in two terminals. Without `RESEND_API_KEY`, the
+server runs in **stub mode** and logs the email payload to stdout.
 
 You can also use the script `npm run parity` to regenerate
 `PRICING_TEST.md` numbers, and `npx tsx scripts/submit-smoke.ts` to hit
-the function handler with the 5 canonical scenarios without HTTP at all.
+the submit handler with a few canonical scenarios without HTTP at all.
 
 ---
 

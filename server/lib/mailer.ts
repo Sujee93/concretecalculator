@@ -3,13 +3,13 @@
  * (/api/submit and /api/partial-lead).
  *
  * Env vars:
- *   RESEND_API_KEY            (server-only; required in production)
- *   INQUIRY_RECIPIENT_EMAIL   (server-only; Luke's address — primary "to")
- *   INQUIRY_CC_EMAILS         (server-only; comma-separated CC list)
- *   SENDER_EMAIL              (server-only; verified sender — see DEPLOYMENT_NOTES.md)
+ *   RESEND_API_KEY            (required in production)
+ *   INQUIRY_RECIPIENT_EMAIL   (Luke's address — primary "to")
+ *   INQUIRY_CC_EMAILS         (comma-separated CC list)
+ *   SENDER_EMAIL              (verified sender — see DEPLOYMENT_NOTES.md)
  *
  * Local dev: if RESEND_API_KEY is unset, sendEmail logs the payload and
- * returns success — convenient for `vercel dev` walk-throughs without a key.
+ * returns success — convenient for testing without a real key.
  */
 
 import { Resend } from "resend";

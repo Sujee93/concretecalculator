@@ -23,6 +23,6 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src", "api", "scripts", "vite.config.ts"],
-  "exclude": ["node_modules", "dist", "originalcalc"]
+  "include": ["src", "scripts", "vite.config.ts"],
+  "exclude": ["node_modules", "dist", "dist-server", "server", "originalcalc"]
 }

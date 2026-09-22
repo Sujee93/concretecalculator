@@ -6,7 +6,7 @@
  */
 
 import { writeFileSync } from "node:fs";
-import { buildLukeInquiryEmail } from "../api/emails";
+import { buildLukeInquiryEmail } from "../server/lib/emails.js";
 
 const SAMPLE_PHOTO = {
   url: "https://placehold.co/600x400/333/fff?text=Street+View",
