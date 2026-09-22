@@ -9,17 +9,11 @@
  * Returns { success: true } or { success: false, error }.
  */
 
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+import type { Request, Response } from "express";
 import { z } from "zod";
-// Explicit .js extension — see note in submit.ts (ESM under "type":"module").
-import { buildPartialLeadEmail, buildWelcomePackEmail } from "./emails.js";
-import { readWelcomeConfig } from "./welcome-config.js";
-import {
-  SENDER_EMAIL,
-  INQUIRY_RECIPIENT,
-  CC_RECIPIENTS,
-  sendEmail,
-} from "./mailer.js";
+import { buildPartialLeadEmail, buildWelcomePackEmail } from "../lib/emails.js";
+import { readWelcomeConfig } from "../lib/welcomeConfig.js";
+import { SENDER_EMAIL, INQUIRY_RECIPIENT, CC_RECIPIENTS, sendEmail } from "../lib/mailer.js";
 
 const payloadSchema = z.object({
   customer: z.object({
@@ -31,26 +25,8 @@ const payloadSchema = z.object({
   sourceUrl: z.string().max(500).optional(),
 });
 
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse,
-): Promise<void> {
-  if (req.method !== "POST") {
-    res.status(405).json({ success: false, error: "Method Not Allowed" });
-    return;
-  }
-
-  let body: unknown = req.body;
-  if (typeof body === "string") {
-    try {
-      body = JSON.parse(body);
-    } catch {
-      res.status(400).json({ success: false, error: "Invalid JSON" });
-      return;
-    }
-  }
-
-  const parsed = payloadSchema.safeParse(body);
+export async function partialLeadHandler(req: Request, res: Response): Promise<void> {
+  const parsed = payloadSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
       success: false,
@@ -117,15 +93,16 @@ export default async function handler(
 /**
  * Absolute URL of the welcome-pack PDF for Resend to fetch and attach.
  * Prefers WELCOME_PACK_URL; otherwise derives it from the request host, since
- * the PDF ships in /public and is served from the same Vercel deployment that
- * hosts this function.
+ * the PDF ships in /public and is served from the same deployment that hosts
+ * this server.
  */
-function resolveWelcomePackUrl(req: VercelRequest): string | undefined {
+function resolveWelcomePackUrl(req: Request): string | undefined {
   if (process.env.WELCOME_PACK_URL) return process.env.WELCOME_PACK_URL;
   const host = req.headers.host;
   if (!host) return undefined;
   const proto =
     (req.headers["x-forwarded-proto"] as string | undefined)?.split(",")[0] ||
+    req.protocol ||
     "https";
   return `${proto}://${host}/Smooth_Concrete_Welcome_Pack.pdf`;
 }

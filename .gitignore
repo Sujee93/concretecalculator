@@ -8,6 +8,7 @@ __pycache__/
 # Node / Vite
 node_modules
 dist
+dist-server
 .vite
 *.log
 npm-debug.log*
@@ -20,8 +21,9 @@ yarn-error.log*
 .env.*.local
 !.env.example
 
-# Vercel
-.vercel
+# Local runtime data (uploaded files, admin-saved config) — persistent on
+# the host, never committed. See HOSTINGER_DEPLOYMENT.md.
+/data
 
 # Editors
 .idea

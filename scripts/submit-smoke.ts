@@ -1,27 +1,21 @@
 /**
- * Local smoke test for api/submit.ts — exercises the function with mock
- * VercelRequest/Response objects against several scenarios. RESEND_API_KEY is
- * unset, so the function runs in stub mode (logs the email instead of
- * sending), giving us a fast end-to-end check without spending an email.
+ * Local smoke test for server/routes/submit.ts — exercises the handler with
+ * mock Express Request/Response objects against several scenarios.
+ * RESEND_API_KEY is unset, so it runs in stub mode (logs the email instead
+ * of sending), giving us a fast end-to-end check without spending an email.
  *
  *     npx tsx scripts/submit-smoke.ts
  */
 
-import handler from "../api/submit";
+import { submitHandler } from "../server/routes/submit.js";
 
 interface MockRes {
   statusCode: number;
   body: unknown;
 }
 
-function mkReq(method: string, body: unknown) {
-  return {
-    method,
-    body,
-    headers: {},
-    query: {},
-    cookies: {},
-  } as unknown as Parameters<typeof handler>[0];
+function mkReq(body: unknown) {
+  return { body } as unknown as Parameters<typeof submitHandler>[0];
 }
 
 function mkRes() {
@@ -35,21 +29,18 @@ function mkRes() {
       out.body = body;
       return this;
     },
-  } as unknown as Parameters<typeof handler>[1];
+  } as unknown as Parameters<typeof submitHandler>[1];
   return { res, out };
 }
 
-async function run(label: string, payload: unknown, method = "POST") {
+async function run(label: string, payload: unknown) {
   const { res, out } = mkRes();
-  await handler(mkReq(method, payload), res);
+  await submitHandler(mkReq(payload), res);
   console.log(`\n[${label}]  →  ${out.statusCode}  ${JSON.stringify(out.body)}`);
 }
 
 (async () => {
-  // 1. Method check
-  await run("GET (method check)", null, "GET");
-
-  // 2. Bogus body
+  // 1. Bogus body
   await run("Invalid payload", { not: "valid" });
 
   // 3. Valid inquiry (with full estimate)
@@ -123,7 +114,7 @@ async function run(label: string, payload: unknown, method = "POST") {
     },
     plans: [
       {
-        url: "https://example.blob.vercel-storage.com/plans/site-plan.pdf",
+        url: "https://example.com/uploads/plans/site-plan.pdf",
         filename: "site-plan.pdf",
         contentType: "application/pdf",
         size: 1234567,
@@ -131,7 +122,7 @@ async function run(label: string, payload: unknown, method = "POST") {
     ],
     photos: [
       {
-        url: "https://example.blob.vercel-storage.com/photos/street.jpg",
+        url: "https://example.com/uploads/photos/street.jpg",
         filename: "street.jpg",
         contentType: "image/jpeg",
         size: 482104,

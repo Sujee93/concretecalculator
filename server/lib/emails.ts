@@ -8,7 +8,7 @@
  * when it fired, prominent final-estimate box, repayment box, review flags.
  */
 
-import type { ValidatedPayload } from "./submit";
+import type { ValidatedPayload } from "../types.js";
 
 const C = {
   text: "#333",
